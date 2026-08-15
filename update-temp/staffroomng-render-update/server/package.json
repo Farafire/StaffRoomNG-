@@ -1,0 +1,16 @@
+{
+  "name": "staffroomng-server",
+  "version": "1.0.0",
+  "description": "Handles Paystack unlock payments for StaffRoomNG, using Firebase Admin SDK for Auth + Firestore (no Blaze plan required).",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.0",
+    "node-fetch": "^2.7.0"
+  }
+}

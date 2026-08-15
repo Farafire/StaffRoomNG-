@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Public profile info created on first sign-in.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Listings (vacancies, teacher/tutor availability, parent requests).
+    // Anyone signed in can read. Only the owner can create/edit/delete their own.
+    // Contact info lives in a private subcollection so it is never sent to
+    // clients who haven't paid to unlock it.
+    match /listings/{listingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+
+      // Contact sub-document: never directly readable by clients.
+      // Only Cloud Functions (using the Admin SDK, which bypasses rules)
+      // may read this after confirming a successful unlock payment.
+      match /private/contact {
+        allow read: if false;
+        allow write: if request.auth != null
+                     && get(/databases/$(database)/documents/listings/$(listingId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // Unlock records: proof that a user paid to view a listing's contact.
+    // Clients can only READ their own unlock record (to know it succeeded).
+    // Nothing may WRITE here from the client — only the paystackWebhook
+    // Cloud Function creates these, after independently verifying payment
+    // with Paystack's servers. This is what prevents anyone from unlocking
+    // a contact without actually paying.
+    match /unlocks/{unlockId} {
+      allow read: if request.auth != null
+                  && unlockId.matches(request.auth.uid + '_.*');
+      allow write: if false;
+    }
+  }
+}
