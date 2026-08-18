@@ -167,6 +167,7 @@ app.post("/get-unlocked-contact", express.json(), requireAuth, async (req, res) 
     console.error(err);
     res.status(500).json({ error: "Server error." });
   }
+  
 });
 app.post("/create-listing", express.json(), requireAuth, async (req, res) => {
   try {
