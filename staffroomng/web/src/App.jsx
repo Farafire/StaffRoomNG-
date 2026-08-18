@@ -37,43 +37,40 @@ export default function App() {
       <Footer setView={setView} setRegRole={setRegRole} />
     </div>
   );
-}
 
-// ---------- Login ----------
+  
+  // ---------- Login ----------
+}
 function Login({ onDone }) {
-  const { sendOtp, confirmOtp } = useAuth();
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [stage, setStage] = useState("phone"); // phone | otp
+  const { signUp, signIn } = useAuth();
+  const [mode, setMode] = useState("signin"); // signin | signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submitPhone(e) {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      // Expects Nigerian numbers like 0803... and converts to +234 E.164.
-      const digits = phone.replace(/\D/g, "");
-      const e164 = digits.startsWith("0") ? "+234" + digits.slice(1) : "+" + digits;
-      await sendOtp(e164);
-      setStage("otp");
-    } catch (err) {
-      setError(err.message || "Couldn't send the code. Try again.");
-    } finally {
-      setBusy(false);
-    }
+  function friendlyError(err) {
+    const code = err.code || "";
+    if (code.includes("email-already-in-use")) return "That email's already registered — try signing in instead.";
+    if (code.includes("invalid-credential") || code.includes("wrong-password")) return "Email or password didn't match. Try again.";
+    if (code.includes("weak-password")) return "Please use at least 6 characters for your password.";
+    if (code.includes("user-not-found")) return "No account found with that email — try registering instead.";
+    return "Something went wrong. Please try again.";
   }
 
-  async function submitCode(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await confirmOtp(code);
+      if (mode === "signup") {
+        await signUp(email, password);
+      } else {
+        await signIn(email, password);
+      }
       onDone();
     } catch (err) {
-      setError("That code didn't match. Try again.");
+      setError(friendlyError(err));
     } finally {
       setBusy(false);
     }
@@ -82,36 +79,39 @@ function Login({ onDone }) {
   return (
     <div className="max-w-md mx-auto px-5 py-16">
       <h1 className="ff-display" style={{ fontSize: "1.7rem", fontWeight: 700, color: "var(--chalk)" }}>
-        Sign in to continue
+        {mode === "signup" ? "Create your account" : "Sign in to continue"}
       </h1>
       <p className="ff-body" style={{ opacity: 0.75, marginTop: "0.3rem" }}>
-        We use your phone number to verify real people — no passwords to remember.
+        {mode === "signup" ? "Just an email and password — free to register." : "Welcome back."}
       </p>
 
-      {stage === "phone" && (
-        <form onSubmit={submitPhone} className="card p-6 mt-6 flex flex-col gap-4">
-          <div>
-            <label className="label">Phone number</label>
-            <input className="input" placeholder="0803 xxx xxxx" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          </div>
-          {error && <p style={{ color: "var(--pin)", fontSize: "0.85rem" }}>{error}</p>}
-          <button className="btn btn-chalk" disabled={busy}>{busy ? "Sending…" : "Send code"}</button>
-        </form>
-      )}
+      <form onSubmit={handleSubmit} className="card p-6 mt-6 flex flex-col gap-4">
+        <div>
+          <label className="label">Email address</label>
+          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Password</label>
+          <input className="input" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        {error && <p style={{ color: "var(--pin)", fontSize: "0.85rem" }}>{error}</p>}
+        <button className="btn btn-chalk" disabled={busy}>
+          {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
+        </button>
+      </form>
 
-      {stage === "otp" && (
-        <form onSubmit={submitCode} className="card p-6 mt-6 flex flex-col gap-4">
-          <div>
-            <label className="label">Enter the 6-digit code sent to {phone}</label>
-            <input className="input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />
-          </div>
-          {error && <p style={{ color: "var(--pin)", fontSize: "0.85rem" }}>{error}</p>}
-          <button className="btn btn-chalk" disabled={busy}>{busy ? "Verifying…" : "Verify & continue"}</button>
-        </form>
-      )}
+      <button
+        type="button"
+        onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}
+        className="btn btn-outline"
+        style={{ marginTop: "1rem", width: "100%" }}
+      >
+        {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
+      </button>
     </div>
   );
 }
+
 
 // ---------- Register ----------
 function Register({ regRole, setRegRole, onDone }) {

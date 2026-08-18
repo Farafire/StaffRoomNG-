@@ -168,6 +168,27 @@ app.post("/get-unlocked-contact", express.json(), requireAuth, async (req, res) 
     res.status(500).json({ error: "Server error." });
   }
 });
+app.post("/create-listing", express.json(), requireAuth, async (req, res) => {
+  try {
+    const { contact, ...publicFields } = req.body || {};
+    if (!publicFields.title || !contact || !contact.name || !contact.phone) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    const listingRef = db.collection("listings").doc();
+    await listingRef.set({
+      ...publicFields,
+      ownerId: req.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await listingRef.collection("private").doc("contact").set(contact);
+
+    res.json({ id: listingRef.id });
+  } catch (err) {
+    console.error("create-listing error:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+});
 
 app.get("/", (_req, res) => res.send("StaffRoomNG payment server is running."));
 
